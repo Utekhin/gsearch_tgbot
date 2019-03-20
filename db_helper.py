@@ -61,7 +61,7 @@ def switch_safesearch(user_id):
 
 def change_tbs(user_id, new_val):
 	db.user_settings.update_one({'user': user_id}, {'$set':
-								'tbs': tbs_params[new_val]})
+								{'tbs': tbs_params[new_val]}})
 
 
 def show_settings(user_id):

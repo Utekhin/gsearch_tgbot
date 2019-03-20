@@ -11,25 +11,52 @@ bot = Bot(API_TOKEN)
 dp = Dispatcher(bot)
 
 
+about = '''Asynchronous Google search Telegram bot built on \
+<code>aiogram</code> & <code>googlesearch</code>.
+
+GitHub repo: <a href='https://github.com/fleischgewehr/gsearch_tgbot'>here</a>'''
+
+
 @dp.message_handler(commands=['start'])
 async def welcome(message):
 	# Init defaults for search func
 	if not db_helper.check_if_exists(message.chat.id):
 		db_helper.set_defaults(message.chat.id)
-	await message.reply('Send me your query.')
+
+	_keyboard = [
+			[types.KeyboardButton('🔧 Settings'),
+			types.KeyboardButton('⚙ Source code'),]]
+ 
+	keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard,
+											resize_keyboard=True)
+	await bot.send_message(message.chat.id, 
+							'Send me your query.', reply_markup=keyboard)
+
+	dp.register_message_handler(change_user_settings, text='🔧 Settings')
+	dp.register_message_handler(feedback_msg, text='⚙ Source code')
+
+
+dp.register_message_handler(welcome, commands=['cancel'])
+dp.register_message_handler(welcome, text='🔙 Home')
+
+
+async def feedback_msg(message):
+	await bot.send_message(message.chat.id, text=about,
+							parse_mode='html', disable_web_page_preview=True)
 
 
 @dp.message_handler(regexp='🔧 Settings')
 async def change_user_settings(message):
 	# show inline keyboard with params
 	_keyboard = [
-        [types.KeyboardButton('👅 Results language')], 
-        [types.KeyboardButton('⏳ Time filter')],
-        [types.KeyboardButton('🔞 Safe search')],
-        [types.KeyboardButton('🔙 Back')],
+        [types.KeyboardButton('👅 Results language'), 
+        types.KeyboardButton('⏳ Time filter'),],
+        [types.KeyboardButton('🔞 Safe search'),
+        types.KeyboardButton('🔙 Home'),],
     ]
 
-	keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard)
+	keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard,
+											resize_keyboard=True)
 
 	settings = db_helper.show_settings(message.chat.id)
 	current_settings = '''Your settings:
@@ -46,11 +73,17 @@ Choose an option:
 		await bot.send_message(message.chat.id,
 								'Error. Enter /start and try again.')
 
+	dp.register_message_handler(change_query_language,
+								text='👅 Results language')
+	dp.register_message_handler(change_tbs,
+								text='⏳ Time filter')
+	dp.register_message_handler(switch_safesearch,
+								text='🔞 Safe search')
 
-@dp.message_handler(regexp='👅 Results language')
+
 async def change_query_language(message):
 	current = db_helper.show_settings(message.chat.id)
-	reply = 'Your current language is: {}'.format(current['lang'])
+	reply = 'Your current language is: {}.'.format(current['lang'])
 	
 	_keyboard = [
         [types.KeyboardButton('🇬🇧')], 
@@ -63,15 +96,22 @@ async def change_query_language(message):
 	keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard)
 	await bot.send_message(message.chat.id, text=reply, reply_markup=keyboard)
 
+	dp.register_message_handler(lang_handler,
+								lambda msg: msg.text in db_helper.langs)
 
-@dp.message_handler(regexp='⏳ Time filter')
+
+async def lang_handler(msg):
+	new_lang = db_helper.change_lang(msg.chat.id, msg.text)
+	await bot.send_message(msg.chat.id,
+							'Your language was set to: {}.'.format(new_lang))
+
+
 async def change_tbs(message):
 	# todo: inline keyboard here. handle input in next func
 	await bot.send_message(message.chat.id,
 							'Choose how relevant results will be.')
 
 
-@dp.message_handler(regexp='🔞 Safe search')
 async def switch_safesearch(message):
 	flag = db_helper.switch_safesearch(message.chat.id)
 	await bot.send_message(message.chat.id,
