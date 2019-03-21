@@ -36,15 +36,6 @@ async def welcome(message):
     dp.register_message_handler(feedback_msg, text='⚙ Source code')
 
 
-dp.register_message_handler(welcome, commands=['cancel'])
-dp.register_message_handler(welcome, text='🔙 Home')
-
-
-async def feedback_msg(message):
-    await bot.send_message(message.chat.id, text=about,
-                            parse_mode='html', disable_web_page_preview=True)
-
-
 @dp.message_handler(regexp='🔧 Settings')
 async def change_user_settings(message):
     # show inline keyboard with params
@@ -52,7 +43,7 @@ async def change_user_settings(message):
         [types.KeyboardButton('👅 Results language'), 
         types.KeyboardButton('⏳ Time filter'),],
         [types.KeyboardButton('🔞 Safe search'),
-        types.KeyboardButton('🔙 Home'),],
+        types.KeyboardButton('🔙 Back')],
     ]
 
     keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard,
@@ -64,8 +55,6 @@ async def change_user_settings(message):
 - Language: {0}
 - Safe search: {1}
 
-/cancel
-
 Choose an option:
     '''.format(settings['lang'], settings['safe'])
     if settings:
@@ -73,7 +62,7 @@ Choose an option:
                                 reply_markup=keyboard)
     else:
         await bot.send_message(message.chat.id,
-                                'Error. Enter /cancel and try again.')
+                                'Error. Enter /home and try again.')
 
     dp.register_message_handler(change_query_language,
                                 text='👅 Results language')
@@ -83,16 +72,27 @@ Choose an option:
                                 text='🔞 Safe search')
 
 
+dp.register_message_handler(welcome, commands=['home'])
+dp.register_message_handler(welcome, text='🔙 Back')
+dp.register_message_handler(change_user_settings, text='🔙')
+
+
+async def feedback_msg(message):
+    await bot.send_message(message.chat.id, text=about,
+                            parse_mode='html', disable_web_page_preview=True)
+
+
 async def change_query_language(message):
     current = db_helper.show_settings(message.chat.id)
-    reply = 'Your current language is: {}.\n\n/cancel'.format(current['lang'])
+    reply = 'Your current language is: {}.\n\n/home'.format(current['lang'])
     
     _keyboard = [
         [types.KeyboardButton('🇬🇧'), 
         types.KeyboardButton('🇷🇺'),
         types.KeyboardButton('🇪🇸'),
         types.KeyboardButton('🇩🇪'),
-        types.KeyboardButton('🇨🇳')],
+        types.KeyboardButton('🇨🇳'),
+        types.KeyboardButton('🔙')],
     ]
 
     keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard,
@@ -106,7 +106,7 @@ async def change_query_language(message):
 async def lang_handler(message):
     new_lang = db_helper.change_lang(message.chat.id, message.text)
     await bot.send_message(message.chat.id,
-                'Your language was set to: {}.\n\n/cancel'.format(new_lang))
+                'Your language was set to: {}.\n\n/home'.format(new_lang))
 
 
 async def change_tbs(message):
@@ -114,13 +114,14 @@ async def change_tbs(message):
     _keyboard = [
             [types.KeyboardButton('Last hour'),
             types.KeyboardButton('Last 24 hours'),
-            types.KeyboardButton('Last month')]
+            types.KeyboardButton('Last month'),
+            types.KeyboardButton('🔙')]
         ]
 
     keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard,
                                             resize_keyboard=True)
     await bot.send_message(message.chat.id,
-        'Choose how relevant results will be.\n\n/cancel', reply_markup=keyboard)
+        'Choose how relevant results will be.\n\n/home', reply_markup=keyboard)
 
     dp.register_message_handler(tbs_handler,
                             lambda message: message.text in db_helper.tbs_params)
@@ -129,13 +130,13 @@ async def change_tbs(message):
 async def tbs_handler(message):
     new_tbs = db_helper.change_tbs(message.chat.id, message.text)
     await bot.send_message(message.chat.id,
-                'Now you will see only results from {}'.format(new_tbs).lower())
+        'Now you will only get results from {}.\n\n/home'.format(message.text.lower()))
 
 
 async def switch_safesearch(message):
     flag = db_helper.switch_safesearch(message.chat.id)
     await bot.send_message(message.chat.id,
-                text='Done, now safe search is {}.\n\n/cancel'.format(flag))
+                text='Done, now safe search is {}.'.format(flag))
 
 
 @dp.message_handler(regexp='test')
