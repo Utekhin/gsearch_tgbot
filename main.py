@@ -19,21 +19,21 @@ GitHub repo: <a href='https://github.com/fleischgewehr/gsearch_tgbot'>here</a>''
 
 @dp.message_handler(commands=['start'])
 async def welcome(message):
-	# Init defaults for search func
-	if not db_helper.check_if_exists(message.chat.id):
-		db_helper.set_defaults(message.chat.id)
+    # Init defaults for search func
+    if not db_helper.check_if_exists(message.chat.id):
+        db_helper.set_defaults(message.chat.id)
 
-	_keyboard = [
-			[types.KeyboardButton('🔧 Settings'),
-			types.KeyboardButton('⚙ Source code'),]]
+    _keyboard = [
+            [types.KeyboardButton('🔧 Settings'),
+            types.KeyboardButton('⚙ Source code'),]]
  
-	keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard,
-											resize_keyboard=True)
-	await bot.send_message(message.chat.id, 
-							'Send me your query.', reply_markup=keyboard)
+    keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard,
+                                            resize_keyboard=True)
+    await bot.send_message(message.chat.id, 
+                            'Send me your query.', reply_markup=keyboard)
 
-	dp.register_message_handler(change_user_settings, text='🔧 Settings')
-	dp.register_message_handler(feedback_msg, text='⚙ Source code')
+    dp.register_message_handler(change_user_settings, text='🔧 Settings')
+    dp.register_message_handler(feedback_msg, text='⚙ Source code')
 
 
 dp.register_message_handler(welcome, commands=['cancel'])
@@ -41,111 +41,125 @@ dp.register_message_handler(welcome, text='🔙 Home')
 
 
 async def feedback_msg(message):
-	await bot.send_message(message.chat.id, text=about,
-							parse_mode='html', disable_web_page_preview=True)
+    await bot.send_message(message.chat.id, text=about,
+                            parse_mode='html', disable_web_page_preview=True)
 
 
 @dp.message_handler(regexp='🔧 Settings')
 async def change_user_settings(message):
-	# show inline keyboard with params
-	_keyboard = [
+    # show inline keyboard with params
+    _keyboard = [
         [types.KeyboardButton('👅 Results language'), 
         types.KeyboardButton('⏳ Time filter'),],
         [types.KeyboardButton('🔞 Safe search'),
         types.KeyboardButton('🔙 Home'),],
     ]
 
-	keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard,
-											resize_keyboard=True)
+    keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard,
+                                            resize_keyboard=True)
 
-	settings = db_helper.show_settings(message.chat.id)
-	current_settings = '''Your settings:
+    settings = db_helper.show_settings(message.chat.id)
+    current_settings = '''Your settings:
 
 - Language: {0}
 - Safe search: {1}
 
-Choose an option:
-	'''.format(settings['lang'], settings['safe'])
-	if settings:
-		await bot.send_message(message.chat.id, current_settings,
-								reply_markup=keyboard)
-	else:
-		await bot.send_message(message.chat.id,
-								'Error. Enter /start and try again.')
+/cancel
 
-	dp.register_message_handler(change_query_language,
-								text='👅 Results language')
-	dp.register_message_handler(change_tbs,
-								text='⏳ Time filter')
-	dp.register_message_handler(switch_safesearch,
-								text='🔞 Safe search')
+Choose an option:
+    '''.format(settings['lang'], settings['safe'])
+    if settings:
+        await bot.send_message(message.chat.id, current_settings,
+                                reply_markup=keyboard)
+    else:
+        await bot.send_message(message.chat.id,
+                                'Error. Enter /cancel and try again.')
+
+    dp.register_message_handler(change_query_language,
+                                text='👅 Results language')
+    dp.register_message_handler(change_tbs,
+                                text='⏳ Time filter')
+    dp.register_message_handler(switch_safesearch,
+                                text='🔞 Safe search')
 
 
 async def change_query_language(message):
-	current = db_helper.show_settings(message.chat.id)
-	reply = 'Your current language is: {}.'.format(current['lang'])
-	
-	_keyboard = [
-        [types.KeyboardButton('🇬🇧')], 
-        [types.KeyboardButton('🇷🇺')],
-        [types.KeyboardButton('🇪🇸')],
-        [types.KeyboardButton('🇩🇪')],
-        [types.KeyboardButton('🇨🇳')],
+    current = db_helper.show_settings(message.chat.id)
+    reply = 'Your current language is: {}.\n\n/cancel'.format(current['lang'])
+    
+    _keyboard = [
+        [types.KeyboardButton('🇬🇧'), 
+        types.KeyboardButton('🇷🇺'),
+        types.KeyboardButton('🇪🇸'),
+        types.KeyboardButton('🇩🇪'),
+        types.KeyboardButton('🇨🇳')],
     ]
 
-	keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard)
-	await bot.send_message(message.chat.id, text=reply, reply_markup=keyboard)
+    keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard,
+                                        resize_keyboard=True)
+    await bot.send_message(message.chat.id, text=reply, reply_markup=keyboard)
 
-	dp.register_message_handler(lang_handler,
-								lambda msg: msg.text in db_helper.langs)
+    dp.register_message_handler(lang_handler,
+                                lambda message: message.text in db_helper.langs)
 
 
-async def lang_handler(msg):
-	new_lang = db_helper.change_lang(msg.chat.id, msg.text)
-	await bot.send_message(msg.chat.id,
-							'Your language was set to: {}.'.format(new_lang))
+async def lang_handler(message):
+    new_lang = db_helper.change_lang(message.chat.id, message.text)
+    await bot.send_message(message.chat.id,
+                'Your language was set to: {}.\n\n/cancel'.format(new_lang))
 
 
 async def change_tbs(message):
-	# todo: inline keyboard here. handle input in next func
-	await bot.send_message(message.chat.id,
-							'Choose how relevant results will be.')
+    # todo: inline keyboard here. handle input in next func
+    _keyboard = [
+            [types.KeyboardButton('Last hour'),
+            types.KeyboardButton('Last 24 hours'),
+            types.KeyboardButton('Last month')]
+        ]
+
+    keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard,
+                                            resize_keyboard=True)
+    await bot.send_message(message.chat.id,
+        'Choose how relevant results will be.\n\n/cancel', reply_markup=keyboard)
+
+    dp.register_message_handler(tbs_handler,
+                            lambda message: message.text in db_helper.tbs_params)
+
+
+async def tbs_handler(message):
+    new_tbs = db_helper.change_tbs(message.chat.id, message.text)
+    await bot.send_message(message.chat.id,
+                'Now you will see only results from {}'.format(new_tbs).lower())
 
 
 async def switch_safesearch(message):
-	flag = db_helper.switch_safesearch(message.chat.id)
-	await bot.send_message(message.chat.id,
-							text='Done, now safe search is {}.'.format(flag))
-
-
-@dp.message_handler(regexp='🔙 Back')
-async def main_menu(message):
-	# set main inline keyboard
-	pass
+    flag = db_helper.switch_safesearch(message.chat.id)
+    await bot.send_message(message.chat.id,
+                text='Done, now safe search is {}.\n\n/cancel'.format(flag))
 
 
 @dp.message_handler(regexp='test')
 async def get_user_query(message):
-	results = []
-	settings = db_helper.show_settings(message.chat.id)
+    results = []
+    settings = db_helper.show_settings(message.chat.id)
 
-	try:
-		async for res in search(message.text, lang=settings['lang'],
-								tbs=settings['tbs'], safe=settings['safe'],
-								user_agent=settings['user_agent']):
-			results.append(res)
-			if len(results) == 5:
-				# return first 5 results. todo: add inline keyboard
-				# with pagination
-				await bot.send_message(message.chat.id, results)
+    try:
+        async for res in search(message.text, lang=settings['lang'],
+                                tbs=settings['tbs'], safe=settings['safe'],
+                                user_agent=settings['user_agent']):
+            results.append(res)
+            if len(results) == 5:
+                # return first 5 results. todo: add inline keyboard
+                # with pagination
+                await bot.send_message(message.chat.id, results)
 
-	except Exception as e:
-		# if got 503 error - change user agent
+    except Exception as e:
+        # if got 503 error - change user agent
 
-		# TODO: fix new user agent format
-		db_helper.change_user_agent(message.chat.id)
-		await bot.send_message(message.chat.id, e)
+        # TODO: fix new user agent format
+        db_helper.change_user_agent(message.chat.id)
+        await bot.send_message(message.chat.id, e)
 
 
 if __name__ == '__main__':
-	executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp, skip_updates=True)
