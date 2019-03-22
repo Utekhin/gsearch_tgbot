@@ -4,6 +4,7 @@ from googlesearch import get_random_user_agent
 from config import CREDENTIALS
 
 
+# make connection with mongodb storage
 client = MongoClient(CREDENTIALS)
 db = client.tg_bot
 collection = db.user_settings
@@ -16,6 +17,7 @@ tbs_params = {
         'Last month': 'qdr:m',
         }
 
+# dict for change_lang()
 langs = {
         '🇬🇧': 'en',
         '🇷🇺': 'ru',
@@ -38,30 +40,30 @@ def set_defaults(user_id):
 
 
 def change_user_agent(user_id):
-    db.user_settings.update_one({'user': user_id}, {'$set': 
-                                {'user_agent': get_random_user_agent()}})
+    db.user_settings.update_one(
+        {'user': user_id}, {'$set': {'user_agent': get_random_user_agent()}})
 
 
 def change_lang(user_id, new_lang):
-    db.user_settings.update_one({'user': user_id}, {'$set':
-                                {'lang': langs[new_lang]}})
+    db.user_settings.update_one(
+        {'user': user_id}, {'$set': {'lang': langs[new_lang]}})
     return show_settings(user_id)['lang']
 
 
 def switch_safesearch(user_id):
     current_settings = show_settings(user_id)
     if current_settings['safe'] == 'off':
-        db.user_settings.update_one({'user': user_id}, {'$set':
-                                    {'safe': 'on'}})
+        db.user_settings.update_one(
+            {'user': user_id}, {'$set': {'safe': 'on'}})
     else:
-        db.user_settings.update_one({'user': user_id}, {'$set':
-                                    {'safe': 'off'}})
+        db.user_settings.update_one(
+            {'user': user_id}, {'$set': {'safe': 'off'}})
     return show_settings(user_id)['safe']
 
 
 def change_tbs(user_id, new_val):
-    db.user_settings.update_one({'user': user_id}, {'$set':
-                                {'tbs': tbs_params[new_val]}})
+    db.user_settings.update_one(
+        {'user': user_id}, {'$set': {'tbs': tbs_params[new_val]}})
     return show_settings(user_id)['tbs']
 
 
