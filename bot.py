@@ -23,6 +23,9 @@ current_settings = '''Your settings:
 
 Choose an option:'''
 
+# results are stored here
+results = []
+
 
 @dp.message_handler(commands=['start'])
 async def welcome(message):
@@ -35,15 +38,10 @@ async def welcome(message):
             types.KeyboardButton('⚙ Source code')],
         ]
  
-    keyboard = types.ReplyKeyboardMarkup(
-            keyboard=_keyboard, resize_keyboard=True)
+    keyboard = types.ReplyKeyboardMarkup(keyboard=_keyboard, resize_keyboard=True)
 
     await bot.send_message(
             message.chat.id, text='Send me your query.', reply_markup=keyboard)
-
-
-    dp.register_message_handler(change_user_settings, text='🔧 Settings')
-    dp.register_message_handler(feedback_msg, text='⚙ Source code')
 
 
 async def change_user_settings(message):
@@ -142,35 +140,47 @@ async def switch_safesearch(message):
             message.chat.id, text='Done, now safe search is {}.'.format(flag))
 
 
-# placing 'test query' prevents from random queries during testing
-# will be replaced to normal regex later on
-@dp.message_handler(regexp='seth rollins')
-async def get_user_query(message):
-    results = []
-    settings = db_helper.show_settings(message.chat.id)
-    try:
-        async for res in search(
-                            query=message.text, lang=settings['lang'],
-                            safe=settings['safe'], tbs=settings['tbs'],
-                            user_agent=settings['user_agent'], detailed=True):
-            results.append(res)
-            if len(results) == 5:
-                # return first 5 results. todo: add inline keyboard
-                # with pagination
-                response = show_results(results, 1)
-                await bot.send_message(
-                        message.chat.id, text=response, parse_mode='html',
-                        disable_web_page_preview=True)
+# handles both search queries and switching pages:
+# if instance of call is 'Message' it runs search func;
+# if instance is 'CallbackQuery' it returns requested results page
+@dp.callback_query_handler(lambda call: True)
+@dp.message_handler(regexp='.*')
+async def get_user_query(instance):
+    keyboard = show_inline_keyboard()
+    
+    if isinstance(instance, types.Message):
+        global results
+        results = []
+        try:
+            settings = db_helper.show_settings(instance.chat.id)
+            async for res in search(
+                                query=instance.text, lang=settings['lang'],
+                                safe=settings['safe'], tbs=settings['tbs'],
+                                stop=40, user_agent=settings['user_agent'],
+                                detailed=True):
+                results.append(res)
+                if len(results) == 8:
+                    # returns first 5 results
+                    response = show_results(results, 1)
+                    await bot.send_message(
+                            instance.chat.id, text=response, parse_mode='html',
+                            disable_web_page_preview=True, reply_markup=keyboard)
 
-    except Exception as e:
-        # if user got http 503 error - change user agent
-        db_helper.change_user_agent(message.chat.id)
-        await bot.send_message(message.chat.id, text=e)
+        except Exception as e:
+            # if user got http 503 error - change user agent
+            db_helper.change_user_agent(instance.chat.id)
+            await bot.send_message(instance.chat.id, text=e)
+
+    elif isinstance(instance, types.CallbackQuery):
+        response = show_results(results, int(instance.data))
+        await bot.send_message(
+                instance.from_user.id, text=response, parse_mode='html',
+                disable_web_page_preview=True, reply_markup=keyboard)
 
 
 def show_results(arr, page):
-    # returns five results depending on page
-    results = arr[page*5-5:page*5]
+    # returns eight results depending on page
+    results = arr[page*8-8:page*8]
 
     response = 'Page {}. Results:\n\n'.format(page)
     for r in results:
@@ -178,10 +188,24 @@ def show_results(arr, page):
     return response
 
 
+def show_inline_keyboard():
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.row(
+            types.InlineKeyboardButton(text='1', callback_data=1),
+            types.InlineKeyboardButton(text='2', callback_data=2),
+            types.InlineKeyboardButton(text='3', callback_data=3),
+            types.InlineKeyboardButton(text='4', callback_data=4),
+            types.InlineKeyboardButton(text='5', callback_data=5))
+
+    return keyboard
+
+
 # these handlers work everywhere
 dp.register_message_handler(welcome, commands=['home'])
 dp.register_message_handler(welcome, text='🔙 Back')
 dp.register_message_handler(change_user_settings, text='🔙')
+dp.register_message_handler(change_user_settings, text='🔧 Settings')
+dp.register_message_handler(feedback_msg, text='⚙ Source code')
 
 
 if __name__ == '__main__':
