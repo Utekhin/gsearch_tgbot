@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 from googlesearch import get_random_user_agent
 
-from config import CREDENTIALS
+from core.config import CREDENTIALS
 
 
 # make connection with mongodb storage
